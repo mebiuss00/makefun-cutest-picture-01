@@ -1,11 +1,20 @@
-// A working cutest-picture-01 entry (Node 22, standard library only): its picture is the entry.png beside this file, and
-// the program copies it to /output/entry.png. A starting point, not a winner: replace the image. The gate takes a
-// whole PNG or JPEG of at most 1 MiB and 1024 by 1024 pixels, and the judge sees exactly the bytes copied.
-//
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-
-import { copyFileSync } from 'node:fs';
+// make.fun entry for cutest-picture-01: writes the picture to /output/entry.png.
+// The picture ships beside this file as entry.png. Its bytes are a JPEG under a
+// .png name, which the gate accepts: it tells PNG from JPEG by the first bytes,
+// never by the extension.
+import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-copyFileSync(new URL('./entry.png', import.meta.url), join(process.env.MAKEFUN_OUTPUT_DIR ?? '/output', 'entry.png'));
+const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const src = new URL('./entry.png', import.meta.url);
+const bytes = readFileSync(src);
+
+// Fail loudly rather than submit a file the gate would mark invalid.
+const isPng = bytes[0] === 0x89 && bytes[1] === 0x50;
+const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
+if (!isPng && !isJpeg) throw new Error('entry.png is neither PNG nor JPEG');
+if (bytes.length > 1_048_576) throw new Error('entry.png exceeds the 1 MiB cap');
+
+mkdirSync(outDir, { recursive: true });
+copyFileSync(src, join(outDir, 'entry.png'));
+console.log(`wrote ${join(outDir, 'entry.png')} (${isPng ? 'PNG' : 'JPEG'}, ${bytes.length} bytes)`);
